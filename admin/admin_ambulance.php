@@ -1,42 +1,46 @@
 <?php
 include("admin_header.php");
 
-
-
-
 if (isset($_POST['submit'])) {
-  $name = $_POST['name'];
-  $type = $_POST['type'];
-  $contact = $_POST['contact'];
-  $regno = $_POST['regno'];
-  $photo = $_FILES['photo']['name'];
-  $temp = $_FILES['photo']['tmp_name'];
-  move_uploaded_file($temp, "../asset_dashboard/file_uploads/" . $photo);
-  $insq = "insert into tbl_ambulance(ambulance_name,ambulance_type,ambulance_contact,ambulance_regno,ambulance_photo)
-values('$name','$type','$contact','$regno','$photo')";
-  mysqli_query($con, $insq);
+  $name = sanitizeInput($_POST['name']);
+  $type = sanitizeInput($_POST['type']);
+  $contact = sanitizeInput($_POST['contact']);
+  $regno = sanitizeInput($_POST['regno']);
+  
+  $photo_name = '';
+  if ($_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+    $allowed_types = array('image/jpeg', 'image/png', 'image/gif');
+    if (in_array($_FILES['photo']['type'], $allowed_types)) {
+      $photo_name = time() . '_' . basename($_FILES['photo']['name']);
+      move_uploaded_file($_FILES['photo']['tmp_name'], "../asset_dashboard/file_uploads/" . $photo_name);
+    }
+  }
+  
+  $stmt = executeQuery($con, "INSERT INTO tbl_ambulance(ambulance_name, ambulance_type, ambulance_contact, ambulance_regno, ambulance_photo) VALUES(?, ?, ?, ?, ?)", "sssss", array($name, $type, $contact, $regno, $photo_name));
+  if ($stmt) { $stmt->close(); }
   header('location:admin_ambulance.php');
+  exit;
 }
 
-$remove = $_GET['remove'];
+$remove = isset($_GET['remove']) ? intval($_GET['remove']) : 0;
 if ($remove) {
-  $delq = "delete from tbl_ambulance where ambulance_id='$remove'";
-  $query = mysqli_query($con, $delq);
-  if ($query == True) {
-    header('location:admin_ambulance.php');
-  }
+  $stmt = executeQuery($con, "DELETE FROM tbl_ambulance WHERE ambulance_id=?", "i", array($remove));
+  if ($stmt) { $stmt->close(); }
+  header('location:admin_ambulance.php');
+  exit;
 }
 
 if (isset($_POST['edit_submit'])) {
-  $id = $_POST['ambulance_id'];
-  $name = $_POST['name'];
-  $contact = $_POST['contact'];
-  $regno = $_POST['regno'];
-  $upq = "update tbl_ambulance set ambulance_name='$name', ambulance_contact='$contact', ambulance_regno='$regno' where ambulance_id='$id'";
-  mysqli_query($con, $upq);
+  $id = intval($_POST['ambulance_id']);
+  $name = sanitizeInput($_POST['name']);
+  $contact = sanitizeInput($_POST['contact']);
+  $regno = sanitizeInput($_POST['regno']);
+  
+  $stmt = executeQuery($con, "UPDATE tbl_ambulance SET ambulance_name=?, ambulance_contact=?, ambulance_regno=? WHERE ambulance_id=?", "ssii", array($name, $contact, $regno, $id));
+  if ($stmt) { $stmt->close(); }
   header('location:admin_ambulance.php');
+  exit;
 }
-
 
 ?>
 <main id="main" class="main">
@@ -45,7 +49,7 @@ if (isset($_POST['edit_submit'])) {
     <h1>Hemo Connect</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">Admin</a></li>
+        <li class="breadcrumb-item"><a href="admin_participants.php">Admin</a></li>
         <li class="breadcrumb-item">Ambulance</li>
         <li class="breadcrumb-item active">Add & View</li>
       </ol>
@@ -62,36 +66,36 @@ if (isset($_POST['edit_submit'])) {
 
               <div class="col-md-6">
                 <div class="form-floating">
-                  <input type="name" class="form-control" name="name" id="name" placeholder="enter place name">
-                  <label for="floatingEmail">Name</label>
+                  <input type="text" class="form-control" name="name" id="name" placeholder="enter ambulance name" required>
+                  <label for="name">Name</label>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-floating">
-                  <input type="name" class="form-control" name="regno" id="district" placeholder="enter district name">
-                  <label for="floatingEmail">Register Number</label>
+                  <input type="text" class="form-control" name="regno" id="regno" placeholder="enter register number" required>
+                  <label for="regno">Register Number</label>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-floating">
-                  <select class="form-control" name="type" id="state">
+                  <select class="form-control" name="type" id="type" required>
                     <option value="">--choose type--</option>
                     <option value="With ICU">With ICU</option>
                     <option value="without ICU">without ICU</option>
                   </select>
-                  <label for="floatingEmail">Type</label>
+                  <label for="type">Type</label>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-floating">
-                  <input type="name" class="form-control" name="contact" id="state" placeholder="enter contact number">
-                  <label for="floatingEmail">Contact Number</label>
+                  <input type="text" class="form-control" name="contact" id="contact" placeholder="enter contact number" required>
+                  <label for="contact">Contact Number</label>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-floating">
                   <input type="file" class="form-control" name="photo" id="photo">
-                  <label for="floatingEmail">Photo</label>
+                  <label for="photo">Photo</label>
                 </div>
               </div>
 
@@ -123,20 +127,19 @@ if (isset($_POST['edit_submit'])) {
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_ambulance";
-                $row = mysqli_query($con, $selq);
+                $ambulances = getRows($con, "SELECT * FROM tbl_ambulance");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($ambulances as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><img src="../asset_dashboard/file_uploads/<?php echo $data['ambulance_photo']; ?>" height="55" width="45"></td>
-                    <td><?php echo $data['ambulance_name']; ?></td>
-                    <td><?php echo $data['ambulance_type']; ?></td>
-                    <td><?php echo $data['ambulance_contact']; ?></td>
-                    <td><?php echo $data['ambulance_regno']; ?></td>
+                    <td><img src="../asset_dashboard/file_uploads/<?php echo htmlspecialchars($data['ambulance_photo']); ?>" height="55" width="45"></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_type']); ?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_contact']); ?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_regno']); ?></td>
                     <td>
 
 
@@ -159,26 +162,26 @@ if (isset($_POST['edit_submit'])) {
 
                               <form class="row g-3" method="post" enctype="multipart/form-data">
 
-                                <input type="hidden" class="form-control" name="ambulance_id" id="name" value="<?php echo $data['ambulance_id'] ?>" placeholder="enter place name">
+                                <input type="hidden" class="form-control" name="ambulance_id" value="<?php echo $data['ambulance_id'] ?>">
 
                                 <div class="col-md-6">
                                   <div class="form-floating">
-                                    <input type="text" class="form-control" name="name" id="name" value="<?php echo $data['ambulance_name'] ?>" placeholder="enter place name">
-                                    <label for="floatingEmail">Name</label>
+                                    <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($data['ambulance_name']) ?>" placeholder="enter ambulance name" required>
+                                    <label for="name">Name</label>
                                   </div>
                                 </div>
 
                                 <div class="col-md-6">
                                   <div class="form-floating">
-                                    <input type="text" class="form-control" name="regno" id="district" value="<?php echo $data['ambulance_regno'] ?>" placeholder="enter district name">
-                                    <label for="floatingEmail">Register Number</label>
+                                    <input type="text" class="form-control" name="regno" value="<?php echo htmlspecialchars($data['ambulance_regno']) ?>" placeholder="enter register number" required>
+                                    <label for="regno">Register Number</label>
                                   </div>
                                 </div>
 
                                 <div class="col-md-6">
                                   <div class="form-floating">
-                                    <input type="text" class="form-control" name="contact" id="state" placeholder="enter contact number" value="<?php echo $data['ambulance_contact'] ?>">
-                                    <label for="floatingEmail">Contact Number</label>
+                                    <input type="text" class="form-control" name="contact" value="<?php echo htmlspecialchars($data['ambulance_contact']) ?>" placeholder="enter contact number" required>
+                                    <label for="contact">Contact Number</label>
                                   </div>
                                 </div>
 

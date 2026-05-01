@@ -8,9 +8,9 @@ include("admin_header.php");
     <h1>Hemo Connect</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="admin_participants.php">Admin</a></li>
         <li class="breadcrumb-item">FaQ</li>
-        <li class="breadcrumb-item active">Add & View</li>
+        <li class="breadcrumb-item active">View</li>
       </ol>
     </nav>
   </div><!-- End Page Title -->
@@ -29,23 +29,22 @@ include("admin_header.php");
                   <th scope="col">Name</th>
                   <th scope="col">Date</th>
                   <th scope="col">Query</th>
-                  <th scope="col">Reply</th>\
+                  <th scope="col">Reply</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_faq a inner join tbl_user b on a.user_id=b.user_id";
-                $row = mysqli_query($con, $selq);
+                $results = getRows($con, "SELECT a.*, b.user_name FROM tbl_faq a INNER JOIN tbl_user b ON a.user_id=b.user_id");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($results as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><?php echo $data['user_name']; ?></td>
-                    <td><?php echo $data['faq_date']; ?></td>
-                    <td><?php echo $data['faq_question']; ?></td>
+                    <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_date']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_question']); ?></td>
                     <td>
                       <?php
                       if ($data['faq_reply'] == NULL) {
@@ -54,7 +53,7 @@ include("admin_header.php");
                       <?php
                       } else {
                       ?>
-                        <?php echo $data['faq_reply']; ?>
+                        <?php echo htmlspecialchars($data['faq_reply']); ?>
                       <?php
                       }
                       ?>

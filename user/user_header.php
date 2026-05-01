@@ -1,28 +1,24 @@
 <?php
-$con = mysqli_connect("localhost", "root", "", "db_hemoconnect");
-session_start();
+require_once('../config/database.php');
+require_once('../config/security.php');
 ob_start();
-
-$sid = $_SESSION['id'];
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
-
-if (!isset($_SESSION['id'])) {
+if (!isset($_SESSION['id']) || $_SESSION['user_type'] !== 'user') {
   header("Location: ../index.php");
   exit();
 }
 
 if (isset($_SESSION['flash_message'])) {
-  echo '<script>alert("' . $_SESSION['flash_message'] . '")</script>';
+  echo '<script>alert("' . sanitizeInput($_SESSION['flash_message']) . '")</script>';
   unset($_SESSION['flash_message']);
 }
 
-$selq10 = "select *from tbl_user where user_id='$sid'";
-$row10 = mysqli_query($con, $selq10);
-$data10 = mysqli_fetch_array($row10);
+$sid = $_SESSION['id'];
+$data10 = getRow($con, "SELECT * FROM tbl_user WHERE user_id=?", "s", array($sid));
 
 ?>
 <!DOCTYPE html>
@@ -32,7 +28,7 @@ $data10 = mysqli_fetch_array($row10);
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>DROPE OF HOPE- User |<?php echo $sid; ?>|</title>
+  <title>DROPE OF HOPE- User</title>
   <meta content="" name="description">
   <meta content="" name="keywords">
 
@@ -48,21 +44,12 @@ $data10 = mysqli_fetch_array($row10);
   <link href="../asset_dashboard/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="../asset_dashboard/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="../asset_dashboard/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/remixicon/remixicon.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/simple-datatables/style.css" rel="stylesheet">
 
   <!-- Template Main CSS File -->
   <link href="../asset_dashboard/css/style.css" rel="stylesheet">
 
-  <!-- =======================================================
-  * Template Name: EDPP
-  * Updated: Jul 27 2023 with Bootstrap v5.3.1
-  * Template URL: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/
-  * Author: BootstrapMade.com
-  * License: https://bootstrapmade.com/license/
-  ======================================================== -->
 </head>
 
 <body>
@@ -71,7 +58,7 @@ $data10 = mysqli_fetch_array($row10);
   <header id="header" class="header fixed-top d-flex align-items-center">
 
     <div class="d-flex align-items-center justify-content-between">
-      <a href="index.html" class="logo d-flex align-items-center">
+      <a href="../index.php" class="logo d-flex align-items-center">
         <img src="../asset_dashboard/img/logo.png" alt="">
         <span class="d-none d-lg-block">HemoConnect</span>
       </a>
@@ -84,13 +71,13 @@ $data10 = mysqli_fetch_array($row10);
         <li class="nav-item dropdown pe-3">
 
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-            <img src="../asset_dashboard/file_uploads/<?php echo $data10['user_photo'];?>" alt="Profile" class="rounded-circle">
+            <img src="../asset_dashboard/file_uploads/<?php echo htmlspecialchars($data10['user_photo'] ?? 'profile-img.jpg');?>" alt="Profile" class="rounded-circle">
             <span class="d-none d-md-block dropdown-toggle ps-2">User</span>
           </a><!-- End Profile Iamge Icon -->
 
           <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
             <li class="dropdown-header">
-              <h6>User</h6>
+              <h6><?php echo htmlspecialchars($data10['user_name'] ?? 'User');?></h6>
             </li>
             <li>
               <hr class="dropdown-divider">
@@ -117,10 +104,8 @@ $data10 = mysqli_fetch_array($row10);
     <ul class="sidebar-nav" id="sidebar-nav">
 
       <?php
-      $req = "select *from tbl_request a inner join tbl_donation b on a.reciever_id=b.donation_id where b.user_id='$sid' and request_status='Added'";
-      $req_row = mysqli_query($con, $req);
-      $req_data=mysqli_fetch_array($req_row);
-      if ($req_data) {
+      $req_row = getRows($con, "SELECT * FROM tbl_request a INNER JOIN tbl_donation b ON a.reciever_id=b.donation_id WHERE b.user_id=? AND request_status='Added'", "s", array($sid));
+      if (!empty($req_row)) {
       ?>
 
         <li class="nav-item">

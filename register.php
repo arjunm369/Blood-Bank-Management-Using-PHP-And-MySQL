@@ -1,41 +1,121 @@
 <?php
-$con = mysqli_connect("localhost", "root", "", "db_hemoconnect");
+session_start();
+ob_start();
+require_once('config/database.php');
+require_once('config/security.php');
 
-
+// Display flash messages
 if (isset($_SESSION['flash_message'])) {
-  echo '<script>alert("' . $_SESSION['flash_message'] . '")</script>';
+  echo '<script>alert("' . sanitizeInput($_SESSION['flash_message']) . '")</script>';
   unset($_SESSION['flash_message']);
 }
 
+// Handle registration
 if (isset($_POST['submit'])) {
-  $name = $_POST['name'];
-  $email = $_POST['email'];
-  $contact = $_POST['number'];
-  $dob = $_POST['dob'];
-  $bgroup = $_POST['bgroup'];
-  $address = $_POST['address'];
-  $password = $_POST['password'];
-  $photo = $_FILES['photo']['name'];
-  $temp = $_FILES['photo']['tmp_name'];
-
+  // Collect and sanitize inputs
+  $name = sanitizeInput($_POST['name'] ?? '');
+  $email = sanitizeInput($_POST['email'] ?? '');
+  $contact = sanitizeInput($_POST['number'] ?? '');
+  $dob = sanitizeInput($_POST['dob'] ?? '');
+  $bgroup = $_POST['bgroup'] ?? '';
+  $address = sanitizeInput($_POST['address'] ?? '');
+  $password = $_POST['password'] ?? '';
+  
+  // Validate inputs
+  $errors = array();
+  
+  if (empty($name) || strlen($name) < 3) {
+    $errors[] = "Name must be at least 3 characters";
+  }
+  
+  if (empty($email) || !validateEmail($email)) {
+    $errors[] = "Valid email is required";
+  }
+  
+  if (empty($contact) || !validatePhone($contact)) {
+    $errors[] = "Valid contact number required (10-12 digits)";
+  }
+  
+  if (empty($dob)) {
+    $errors[] = "Date of birth is required";
+  }
+  
+  if (empty($bgroup) || !isValidBloodGroup($bgroup)) {
+    $errors[] = "Valid blood group is required";
+  }
+  
+  if (empty($address) || strlen($address) < 5) {
+    $errors[] = "Address is required";
+  }
+  
+  if (empty($password) || !validatePasswordStrength($password)) {
+    $errors[] = "Password must be at least 6 characters";
+  }
+  
+  // Handle file upload
+  $photo_name = null;
   if ($_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
-    $_SESSION['flash_message'] = 'File upload failed with error code: ' . $_FILES['photo']['error'];
+    $errors[] = "Photo is required";
   } else {
-    if (move_uploaded_file($temp, "asset_dashboard/file_uploads/" . $photo)) {
-      $insq = "INSERT INTO tbl_user(user_name, user_email, user_phone, user_bgroup, user_address, user_password, user_photo, user_dob) VALUES ('$name','$email','$contact','$bgroup','$address','$password','$photo','$dob')";
-      $upload = mysqli_query($con, $insq);
-
-      if ($upload == true) {
-        $_SESSION['flash_message'] = "Registration Successful. Now You Can Login";
-        header("location:login.php");
-      } else {
-        $_SESSION['flash_message'] = "Error uploading file. Please try again.";
-      }
+    // Validate file type
+    $allowed_types = array('image/jpeg', 'image/png', 'image/gif');
+    $file_type = $_FILES['photo']['type'];
+    
+    if (!in_array($file_type, $allowed_types)) {
+      $errors[] = "Only JPEG, PNG, and GIF images are allowed";
     } else {
-      $_SESSION['flash_message'] = "Error moving the uploaded file.";
+      // Generate unique filename
+      $photo_name = time() . '_' . basename($_FILES['photo']['name']);
+      $upload_dir = "asset_dashboard/file_uploads/";
+      
+      if (!move_uploaded_file($_FILES['photo']['tmp_name'], $upload_dir . $photo_name)) {
+        $errors[] = "Error uploading photo. Please try again.";
+        $photo_name = null;
+      }
     }
   }
+  
+  // If there are errors, show them
+  if (!empty($errors)) {
+    $_SESSION['flash_message'] = implode("\n", $errors);
+    header('location:register.php');
+    exit;
+  }
+  
+  // Check if email already exists
+  $check_email = "SELECT user_id FROM tbl_user WHERE user_email = ?";
+  $existing = getRow($con, $check_email, "s", array($email));
+  if ($existing) {
+    $_SESSION['flash_message'] = "Email already registered";
+    header('location:register.php');
+    exit;
+  }
+  
+  // Hash password
+  $hashed_password = hashPassword($password);
+  
+  // Insert user with prepared statement
+  $insert_user = "INSERT INTO tbl_user(user_name, user_email, user_phone, user_bgroup, user_address, user_password, user_photo, user_dob) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+  
+  if (insertRecord($con, "tbl_user", 
+      array("user_name", "user_email", "user_phone", "user_bgroup", "user_address", "user_password", "user_photo", "user_dob"),
+      "ssssssss",
+      array($name, $email, $contact, $bgroup, $address, $hashed_password, $photo_name, $dob))) {
+    $_SESSION['flash_message'] = "Registration Successful! Now you can login.";
+    header("location:login.php");
+    exit;
+  } else {
+    // Delete uploaded photo if DB insert fails
+    if ($photo_name) {
+      unlink("asset_dashboard/file_uploads/" . $photo_name);
+    }
+    $_SESSION['flash_message'] = "Registration failed. Please try again.";
+    header('location:register.php');
+    exit;
+  }
 }
+
 
 ?>
 <!DOCTYPE html>
@@ -61,21 +141,13 @@ if (isset($_POST['submit'])) {
   <link href="asset_dashboard/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/remixicon/remixicon.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/simple-datatables/style.css" rel="stylesheet">
 
   <!-- Template Main CSS File -->
   <link href="asset_dashboard/css/style.css" rel="stylesheet">
 
-  <!-- =======================================================
-  * Template Name: NiceAdmin
-  * Updated: Jul 27 2023 with Bootstrap v5.3.1
-  * Template URL: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/
-  * Author: BootstrapMade.com
-  * License: https://bootstrapmade.com/license/
-  ======================================================== -->
+
 </head>
 
 <body>
@@ -89,7 +161,7 @@ if (isset($_POST['submit'])) {
             <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
 
               <div class="d-flex justify-content-center py-4">
-                <a href="index.html" class="logo d-flex align-items-center w-auto">
+                <a href="index.php" class="logo d-flex align-items-center w-auto">
                   <img src="asset_dashboard/img/logo.png" alt="">
                   <span class="d-none d-lg-block">DROPE OF HOPE</span>
                 </a>
@@ -145,7 +217,7 @@ if (isset($_POST['submit'])) {
                         <option value="A+">A+</option>
                         <option value="A-">A-</option>
                         <option value="B+">B+</option>
-                        <option value="B+">B-</option>
+                        <option value="B-">B-</option>
                         <option value="AB+">AB+</option>
                         <option value="AB-">AB-</option>
                         <option value="O+">O+</option>
@@ -174,22 +246,6 @@ if (isset($_POST['submit'])) {
                       <label for="javascript">Receiver</label>
 
                     </div>
-
-                    <script>
-                      function validateDate() {
-                        var inputDate = new Date(document.getElementById("dob").value);
-                        var currentDate = new Date();
-                        var eighteenYearsAgo = new Date();
-                        eighteenYearsAgo.setFullYear(currentDate.getFullYear() - 18);
-
-                        if (inputDate > eighteenYearsAgo) {
-                          alert("You must be at least 18 years old.");
-                          document.getElementById("dob").value = ""; // Clear the input
-                        }
-                      }
-                    </script>
-
-
 
                     <div class="col-12">
                       <button class="btn btn-primary w-100" type="submit" name="submit">Create Account</button>
@@ -220,7 +276,7 @@ if (isset($_POST['submit'])) {
 
       if (inputDate > eighteenYearsAgo) {
         alert("You must be at least 18 years old.");
-        document.getElementById("dob").value = ""; // Clear the input
+        document.getElementById("dob").value = "";
       }
     }
   </script>
@@ -228,14 +284,8 @@ if (isset($_POST['submit'])) {
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
   <!-- Vendor JS Files -->
-  <script src="asset_dashboard/vendor/apexcharts/apexcharts.min.js"></script>
   <script src="asset_dashboard/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="asset_dashboard/vendor/chart.js/chart.umd.js"></script>
-  <script src="asset_dashboard/vendor/echarts/echarts.min.js"></script>
-  <script src="asset_dashboard/vendor/quill/quill.min.js"></script>
   <script src="asset_dashboard/vendor/simple-datatables/simple-datatables.js"></script>
-  <script src="asset_dashboard/vendor/tinymce/tinymce.min.js"></script>
-  <script src="asset_dashboard/vendor/php-email-form/validate.js"></script>
 
   <!-- Template Main JS File -->
   <script src="asset_dashboard/js/main.js"></script>

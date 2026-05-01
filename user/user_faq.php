@@ -2,14 +2,13 @@
 include("user_header.php");
 
 if (isset($_POST['submit'])) {
-  $question = $_POST['question'];
+  $question = sanitizeInput($_POST['question']);
 
-  $insq = "insert into tbl_faq(user_id,faq_date,faq_question) values('$sid',CURDATE(),'$question')";
-  mysqli_query($con, $insq);
+  $stmt = executeQuery($con, "INSERT INTO tbl_faq(user_id, faq_date, faq_question) VALUES(?, CURDATE(), ?)", "ss", array($sid, $question));
+  if ($stmt) { $stmt->close(); }
   header('location:user_faq.php');
+  exit;
 }
-
-
 
 ?>
 <main id="main" class="main">
@@ -18,7 +17,7 @@ if (isset($_POST['submit'])) {
     <h1>DROPE OF HOPE</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
         <li class="breadcrumb-item">FaQ</li>
         <li class="breadcrumb-item active">Add & View</li>
       </ol>
@@ -44,18 +43,17 @@ if (isset($_POST['submit'])) {
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_faq a inner join tbl_user b on a.user_id=b.user_id ";
-                $row = mysqli_query($con, $selq);
+                $results = getRows($con, "SELECT a.*, b.user_name FROM tbl_faq a INNER JOIN tbl_user b ON a.user_id=b.user_id");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($results as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><?php echo $data['user_name']; ?></td>
-                    <td><?php echo $data['faq_date']; ?></td>
-                    <td><?php echo $data['faq_question']; ?></td>
+                    <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_date']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_question']); ?></td>
                     <td>
                       <?php
                       if ($data['faq_reply'] == NULL) {
@@ -64,7 +62,7 @@ if (isset($_POST['submit'])) {
                       <?php
                       } else {
                       ?>
-                        <?php echo $data['faq_reply']; ?>
+                        <?php echo htmlspecialchars($data['faq_reply']); ?>
                       <?php
                       }
                       ?>
@@ -88,8 +86,8 @@ if (isset($_POST['submit'])) {
 
               <div class="col-md-12">
                 <div class="form-floating">
-                  <input type="name" class="form-control" name="question" id="name" placeholder="enter place name">
-                  <label for="floatingEmail">Enter Query</label>
+                  <input type="text" class="form-control" name="question" id="question" placeholder="enter your question" required>
+                  <label for="question">Enter Query</label>
                 </div>
               </div>
 

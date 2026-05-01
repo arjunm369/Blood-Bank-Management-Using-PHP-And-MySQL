@@ -7,7 +7,7 @@ include("user_header.php");
         <h1>DROPE OF HOPE</h1>
         <nav>
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="">User</a></li>
+                <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
                 <li class="breadcrumb-item">Home</li>
                 <li class="breadcrumb-item active">History</li>
             </ol>
@@ -32,22 +32,20 @@ include("user_header.php");
                             </thead>
                             <tbody>
                                 <?php
-                                $req_history = "select *from tbl_request a 
-                                inner join tbl_donation b on a.reciever_id=b.donation_id 
-                                inner join tbl_user c on b.user_id=c.user_id 
-                                where request_status='Added' and sender_id='$sid'";
-                                $rh_row = mysqli_query($con, $req_history);
+                                $req_history = getRows($con, "SELECT * FROM tbl_request a 
+                                INNER JOIN tbl_donation b ON a.reciever_id=b.donation_id 
+                                INNER JOIN tbl_user c ON b.user_id=c.user_id 
+                                WHERE request_status='Added' AND sender_id=?", "s", array($sid));
                                 $i = 0;
-                                while ($rh_data = mysqli_fetch_array($rh_row)) {
+                                foreach ($req_history as $rh_data) {
                                     $i++;
                                 ?>
                                     <tr>
                                         <th scope="row"><?php echo $i; ?></th>
-                                        <td><?php echo $rh_data['user_name']; ?></td>
-                                        <td><?php echo $rh_data['user_bgroup']; ?></td>
-                                        <td><?php echo $rh_data['request_date']; ?></td>
-                                        <td><?php echo $rh_data['request_status']; ?></td>
-                                        </td>
+                                        <td><?php echo htmlspecialchars($rh_data['user_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($rh_data['user_bgroup']); ?></td>
+                                        <td><?php echo htmlspecialchars($rh_data['request_date']); ?></td>
+                                        <td><?php echo htmlspecialchars($rh_data['request_status']); ?></td>
                                     </tr>
                                 <?php
                                 }
@@ -80,22 +78,21 @@ include("user_header.php");
                             </thead>
                             <tbody>
                                 <?php
-                                $donors = "select *from tbl_request a 
-                                inner join tbl_donation b on a.reciever_id=b.donation_id 
-                                inner join tbl_user c on a.sender_id=c.user_id 
-                                where request_status='Confirmed' and sender_id='$sid'";
-                                $don_row = mysqli_query($con, $donors);
+                                $donors = getRows($con, "SELECT * FROM tbl_request a 
+                                INNER JOIN tbl_donation b ON a.reciever_id=b.donation_id 
+                                INNER JOIN tbl_user c ON a.sender_id=c.user_id 
+                                WHERE request_status='Confirmed' AND sender_id=?", "s", array($sid));
                                 $i = 0;
-                                while ($data = mysqli_fetch_array($don_row)) {
+                                foreach ($donors as $data) {
                                     $i++;
                                 ?>
                                     <tr>
                                         <th scope="row"><?php echo $i; ?></th>
-                                        <td><?php echo $data['user_name']; ?></td>
-                                        <td><?php echo $data['user_bgroup']; ?></td>
-                                        <td><?php echo $data['request_date']; ?></td>
-                                        <td><?php echo $data['donation_date']; ?></td>
-                                        <td><?php echo $data['request_status']; ?></td>
+                                        <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['user_bgroup']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['request_date']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['donation_date']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['request_status']); ?></td>
                                     </tr>
                                 <?php
                                 }

@@ -7,7 +7,7 @@ include("user_header.php");
     <h1>DROPE OF HOPE</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
         <li class="breadcrumb-item">Ambulance</li>
         <li class="breadcrumb-item active">View</li>
       </ol>
@@ -33,20 +33,19 @@ include("user_header.php");
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_ambulance";
-                $row = mysqli_query($con, $selq);
-                $i=0;
-                while ($data = mysqli_fetch_array($row)) {
+                $ambulances = getRows($con, "SELECT * FROM tbl_ambulance");
+                $i = 0;
+                foreach ($ambulances as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i;?></th>
-                    <td><img src="../asset_dashboard/file_uploads/<?php echo $data['ambulance_photo'];?>" height="55" width="45"></td>
-                    <td><?php echo $data['ambulance_name'];?></td>
-                    <td><?php echo $data['ambulance_type'];?></td>
-                    <td><?php echo $data['ambulance_contact'];?></td>
-                    <td><?php echo $data['ambulance_regno'];?></td>
+                    <td><img src="../asset_dashboard/file_uploads/<?php echo htmlspecialchars($data['ambulance_photo']);?>" height="55" width="45"></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_name']);?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_type']);?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_contact']);?></td>
+                    <td><?php echo htmlspecialchars($data['ambulance_regno']);?></td>
                   </tr>
 
                 <?php

@@ -1,13 +1,9 @@
 <?php
 include('user_header.php');
 
-$user = "SELECT * FROM tbl_user WHERE user_id='$sid'";
-$user_row = mysqli_query($con, $user);
-$user_data = mysqli_fetch_array($user_row);
+$user_data = getRow($con, "SELECT * FROM tbl_user WHERE user_id=?", "s", array($sid));
 
-$lastDonationQuery = "SELECT MAX(donation_date) AS last_donation_date FROM tbl_donation WHERE user_id='$sid'";
-$lastDonationResult = mysqli_query($con, $lastDonationQuery);
-$lastDonationData = mysqli_fetch_array($lastDonationResult);
+$lastDonationData = getRow($con, "SELECT MAX(donation_date) AS last_donation_date FROM tbl_donation WHERE user_id=?", "s", array($sid));
 
 if (isset($_POST['button'])) {
     if (!empty($lastDonationData['last_donation_date'])) {
@@ -20,25 +16,30 @@ if (isset($_POST['button'])) {
         $remainingDays = ceil((3 - $monthsDifference) * 30);
 
         if ($monthsDifference >= 3) {
-            $insq = "INSERT INTO tbl_donation(user_id, donation_date, donation_status) VALUES('$sid', CURDATE(), 'Submitted')";
-            $upload = mysqli_query($con, $insq);
-            if ($upload == True) {
+            $stmt = executeQuery($con, "INSERT INTO tbl_donation(user_id, donation_date, donation_status) VALUES(?, CURDATE(), 'Submitted')", "s", array($sid));
+            if ($stmt) {
+                $stmt->close();
                 $_SESSION['flash_message'] = "Donation form Accepted Successfully!";
                 header("location:user_donate.php");
+                exit;
             }
         } else {
-            $_SESSION['flash_message']="You can only donate after 3 months from the last donation date. Please wait for ' $remainingDays' days.";
+            $_SESSION['flash_message'] = "You can only donate after 3 months from the last donation date. Please wait for " . $remainingDays . " days.";
             header("location:user_donate.php");
+            exit;
         }
     } else {
-        $insq = "INSERT INTO tbl_donation(user_id, donation_date, donation_status) VALUES('$sid', CURDATE(), 'Submitted')";
-        $upload = mysqli_query($con, $insq);
-        if ($upload == True) {
+        $stmt = executeQuery($con, "INSERT INTO tbl_donation(user_id, donation_date, donation_status) VALUES(?, CURDATE(), 'Submitted')", "s", array($sid));
+        if ($stmt) {
+            $stmt->close();
             $_SESSION['flash_message'] = "Donation form Accepted Successfully!";
             header("location:user_donate.php");
+            exit;
         }
     }
 }
+
+$donation_data = getRow($con, "SELECT * FROM tbl_donation WHERE user_id=?", "s", array($sid));
 ?>
 
 <main id="main" class="main">
@@ -47,22 +48,16 @@ if (isset($_POST['button'])) {
         <h1>Blood Donation</h1>
         <nav>
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="index.html">User</a></li>
+                <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
                 <li class="breadcrumb-item">Blood Donation</li>
                 <li class="breadcrumb-item active">Consent Form and Status</li>
             </ol>
         </nav>
     </div><!-- End Page Title -->
-    <?php
-
-    $donation = "select *from tbl_donation where user_id ='$sid'";
-    $donation_row = mysqli_query($con, $donation);
-    $donation_data = mysqli_fetch_array($donation_row);
-    ?>
 
     <section class="section">
         <?php
-        if ($donation_data['donation_status'] != 'Submitted') {
+        if (!isset($donation_data['donation_status']) || $donation_data['donation_status'] != 'Submitted') {
         ?>
 
             <div class="row align-items-center justify-content-center vh-100">
@@ -75,11 +70,11 @@ if (isset($_POST['button'])) {
                                 <p class="card-text">
                                 <h5 class="card-subtitle mb-2 text-muted">Donor Information</h5>
                                 <ul class="nav-content collapse show">
-                                    <li><b>Full Name:</b> <?php echo $user_data['user_name']; ?></li>
-                                    <li><b>Date of Birth:</b> <?php echo $user_data['user_dob']; ?> </li>
-                                    <li><b>Phone Number:</b> +91 <?php echo $user_data['user_phone']; ?> </li>
-                                    <li><b>Email:</b> <?php echo $user_data['user_email']; ?> </li>
-                                    <li><b>Address:</b> <?php echo $user_data['user_address']; ?> </li>
+                                    <li><b>Full Name:</b> <?php echo htmlspecialchars($user_data['user_name']); ?></li>
+                                    <li><b>Date of Birth:</b> <?php echo htmlspecialchars($user_data['user_dob']); ?> </li>
+                                    <li><b>Phone Number:</b> +91 <?php echo htmlspecialchars($user_data['user_phone']); ?> </li>
+                                    <li><b>Email:</b> <?php echo htmlspecialchars($user_data['user_email']); ?> </li>
+                                    <li><b>Address:</b> <?php echo htmlspecialchars($user_data['user_address']); ?> </li>
                                 </ul>
                                 <br>
                                 <h5 class="card-subtitle mb-2 text-muted">Blood Donation Consent</h5>
@@ -112,7 +107,7 @@ if (isset($_POST['button'])) {
                         <div class="card-body">
                             <h3 class="card-title">Thank You!</h3>
                             <p class="card-text">
-                                Dear <?php echo $user_data['user_name']; ?>,
+                                Dear <?php echo htmlspecialchars($user_data['user_name']); ?>,
                             <p>
                                 On behalf of HemoConnect, we extend our deepest gratitude to you for becoming a blood donor. Your selfless act today could be the lifeline for someone tomorrow.
                                 Your generosity not only provides hope to those in urgent need but also inspires others to step forward and make a difference. It's individuals like you who play a pivotal role in ensuring that the gift of life continues to flow for those in critical situations.

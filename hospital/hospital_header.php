@@ -1,29 +1,24 @@
 <?php 
-
-$con = mysqli_connect("localhost", "root", "", "db_hemoconnect");
-session_start();
+require_once('../config/database.php');
+require_once('../config/security.php');
 ob_start();
-
-$sid = $_SESSION['id'];
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
-
-if (!isset($_SESSION['id'])) {
+if (!isset($_SESSION['id']) || $_SESSION['user_type'] !== 'hospital') {
   header("Location: ../index.php");
   exit();
 }
 
 if (isset($_SESSION['flash_message'])) {
-  echo '<script>alert("' . $_SESSION['flash_message'] . '")</script>';
+  echo '<script>alert("' . sanitizeInput($_SESSION['flash_message']) . '")</script>';
   unset($_SESSION['flash_message']);
 }
 
-$selq10 = "select *from tbl_admin where admin_id='$sid'";
-$row10 = mysqli_query($con, $selq10);
-$data10 = mysqli_fetch_array($row10);
+$sid = $_SESSION['id'];
+$data10 = getRow($con, "SELECT * FROM tbl_hospital WHERE hospital_id=?", "s", array($sid));
 
 ?>
 <!DOCTYPE html>
@@ -49,8 +44,6 @@ $data10 = mysqli_fetch_array($row10);
   <link href="../asset_dashboard/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="../asset_dashboard/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="../asset_dashboard/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/remixicon/remixicon.css" rel="stylesheet">
   <link href="../asset_dashboard/vendor/simple-datatables/style.css" rel="stylesheet">
 
@@ -65,7 +58,7 @@ $data10 = mysqli_fetch_array($row10);
   <header id="header" class="header fixed-top d-flex align-items-center">
 
     <div class="d-flex align-items-center justify-content-between">
-      <a href="index.html" class="logo d-flex align-items-center">
+      <a href="../index.php" class="logo d-flex align-items-center">
         <img src="../asset_dashboard/img/logo.png" alt="">
         <span class="d-none d-lg-block">Hemo Connect</span>
       </a>
@@ -79,20 +72,20 @@ $data10 = mysqli_fetch_array($row10);
 
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
             <img src="../asset_dashboard/img/profile-img.jpg" alt="Profile" class="rounded-circle">
-            <span class="d-none d-md-block dropdown-toggle ps-2">Admin</span>
+            <span class="d-none d-md-block dropdown-toggle ps-2">Hospital</span>
           </a><!-- End Profile Iamge Icon -->
 
           <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
             <li class="dropdown-header">
-              <h6>Hemo Connect</h6>
-              <span>Admin</span>
+              <h6><?php echo htmlspecialchars($data10['hospital_name'] ?? 'Hospital');?></h6>
+              <span>Hospital</span>
             </li>
             <li>
               <hr class="dropdown-divider">
             </li>
 
             <li>
-              <a class="dropdown-item d-flex align-items-center" href="#">
+              <a class="dropdown-item d-flex align-items-center" href="../logout.php">
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Sign Out</span>
               </a>

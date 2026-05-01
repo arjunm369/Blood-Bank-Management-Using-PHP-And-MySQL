@@ -7,7 +7,7 @@ include("admin_header.php");
     <h1>Hemo Connect</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">Admin</a></li>
+        <li class="breadcrumb-item"><a href="admin_participants.php">Admin</a></li>
         <li class="breadcrumb-item">Home</li>
         <li class="breadcrumb-item active">Participants</li>
       </ol>
@@ -34,21 +34,21 @@ include("admin_header.php");
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_user";
-                $row = mysqli_query($con, $selq);
+                $users = getRows($con, "SELECT * FROM tbl_user");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($users as $data) {
                 ?>
                   <tr>
                     <th scope="row"><?php echo $i;?></th>
-                    <td><img src="../asset_dashboard/file_uploads/<?php echo $data['user_photo'];?>" height="75" width="60"></td>
-                    <td><?php echo $data['user_name'];?></td>
-                    <td><?php echo $data['user_bgroup'];?></td>
-                    <td><?php echo $data['user_email'];?></td>
-                    <td><?php echo $data['user_phone'];?></td>
-                    <td><?php echo $data['user_address'];?></td>
+                    <td><img src="../asset_dashboard/file_uploads/<?php echo htmlspecialchars($data['user_photo']);?>" height="75" width="60"></td>
+                    <td><?php echo htmlspecialchars($data['user_name']);?></td>
+                    <td><?php echo htmlspecialchars($data['user_bgroup']);?></td>
+                    <td><?php echo htmlspecialchars($data['user_email']);?></td>
+                    <td><?php echo htmlspecialchars($data['user_phone']);?></td>
+                    <td><?php echo htmlspecialchars($data['user_address']);?></td>
                   </tr>
                 <?php
+                  $i++;
                 }
                 ?>
               </tbody>

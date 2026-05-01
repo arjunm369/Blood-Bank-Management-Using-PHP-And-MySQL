@@ -2,15 +2,14 @@
 include("hospital_header.php");
 
 if (isset($_POST['submit'])) {
-  $reply = $_POST['reply'];
-  $feed_id = $_POST['feed_id'];
+  $reply = sanitizeInput($_POST['reply']);
+  $faq_id = intval($_POST['feed_id']);
 
-  $insq = "update tbl_faq set faq_reply='$reply' where faq_id='$feed_id'";
-  mysqli_query($con, $insq);
+  $stmt = executeQuery($con, "UPDATE tbl_faq SET faq_reply=? WHERE faq_id=?", "si", array($reply, $faq_id));
+  if ($stmt) { $stmt->close(); }
   header('location:hospital_faq.php');
+  exit;
 }
-
-
 
 ?>
 <main id="main" class="main">
@@ -19,9 +18,9 @@ if (isset($_POST['submit'])) {
     <h1>HEMOCONNECT</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="hospital_donors.php">Hospital</a></li>
         <li class="breadcrumb-item">FaQ</li>
-        <li class="breadcrumb-item active">Add & View</li>
+        <li class="breadcrumb-item active">Reply</li>
       </ol>
     </nav>
   </div><!-- End Page Title -->
@@ -40,23 +39,22 @@ if (isset($_POST['submit'])) {
                   <th scope="col">Name</th>
                   <th scope="col">Date</th>
                   <th scope="col">Query</th>
-                  <th scope="col">Reply</th>\
+                  <th scope="col">Reply</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_faq a inner join tbl_user b on a.user_id=b.user_id";
-                $row = mysqli_query($con, $selq);
+                $results = getRows($con, "SELECT a.*, b.user_name FROM tbl_faq a INNER JOIN tbl_user b ON a.user_id=b.user_id");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($results as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><?php echo $data['user_name']; ?></td>
-                    <td><?php echo $data['faq_date']; ?></td>
-                    <td><?php echo $data['faq_question']; ?></td>
+                    <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_date']); ?></td>
+                    <td><?php echo htmlspecialchars($data['faq_question']); ?></td>
                     <td>
                       <?php
                       if ($data['faq_reply'] == NULL) {
@@ -76,8 +74,8 @@ if (isset($_POST['submit'])) {
                                   <div class="col-md-12">
                                     <div class="form-floating">
                                       <input type="hidden" class="form-control" name="feed_id" value="<?php echo $data['faq_id'] ?>">
-                                      <input type="text" class="form-control" name="reply" id="name" placeholder="add reply" required>
-                                      <label for="floatingEmail">Enter Reply</label>
+                                      <input type="text" class="form-control" name="reply" id="reply" placeholder="add reply" required>
+                                      <label for="reply">Enter Reply</label>
                                     </div>
                                   </div>
                                   <div class="text-center">
@@ -91,7 +89,7 @@ if (isset($_POST['submit'])) {
                       <?php
                       } else {
                       ?>
-                        <?php echo $data['faq_reply']; ?>
+                        <?php echo htmlspecialchars($data['faq_reply']); ?>
                       <?php
                       }
                       ?>

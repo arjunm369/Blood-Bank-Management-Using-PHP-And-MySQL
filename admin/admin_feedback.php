@@ -2,15 +2,16 @@
 include("admin_header.php");
 
 if (isset($_POST['submit'])) {
-  $reply = $_POST['reply'];
-  $feed_id = $_POST['feed_id'];
+  $reply = sanitizeInput($_POST['reply']);
+  $feed_id = intval($_POST['feed_id']);
 
-    $insq = "update tbl_feedback set feedback_reply='$reply' where feedback_id='$feed_id'";
-    mysqli_query($con, $insq);
-    header('location:admin_feedback.php');
+  $stmt = executeQuery($con, "UPDATE tbl_feedback SET feedback_reply=? WHERE feedback_id=?", "si", array($reply, $feed_id));
+  if ($stmt) {
+    $stmt->close();
   }
-
-
+  header('location:admin_feedback.php');
+  exit;
+}
 
 ?>
 <main id="main" class="main">
@@ -19,9 +20,9 @@ if (isset($_POST['submit'])) {
     <h1>Hemo Connect</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="admin_participants.php">Admin</a></li>
         <li class="breadcrumb-item">Feedback</li>
-        <li class="breadcrumb-item active">Add & View</li>
+        <li class="breadcrumb-item active">View</li>
       </ol>
     </nav>
   </div><!-- End Page Title -->
@@ -45,18 +46,17 @@ if (isset($_POST['submit'])) {
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_feedback a inner join tbl_user b on a.user_id=b.user_id";
-                $row = mysqli_query($con, $selq);
+                $results = getRows($con, "SELECT a.*, b.user_name FROM tbl_feedback a INNER JOIN tbl_user b ON a.user_id=b.user_id");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($results as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><?php echo $data['user_name']; ?></td>
-                    <td><?php echo $data['feedback_date']; ?></td>
-                    <td><?php echo $data['feedback_content']; ?></td>
+                    <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['feedback_date']); ?></td>
+                    <td><?php echo htmlspecialchars($data['feedback_content']); ?></td>
                     <td>
                       <?php
                       if ($data['feedback_reply'] == NULL) {
@@ -91,7 +91,7 @@ if (isset($_POST['submit'])) {
                       <?php
                       } else {
                       ?>
-                        <?php echo $data['feedback_reply']; ?>
+                        <?php echo htmlspecialchars($data['feedback_reply']); ?>
                       <?php
                       }
                       ?>

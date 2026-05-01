@@ -1,32 +1,23 @@
 <?php
 include("user_header.php");
 
+if (isset($_GET['accept'])) {
+    $request_id = intval($_GET['accept']);
 
-if(isset($_GET['accept']))
-{
-    $request_id=$_GET['accept'];
+    $donation_d = getRow($con, "SELECT * FROM tbl_request WHERE request_id=?", "i", array($request_id));
+    $donation_id = $donation_d['reciever_id'];
 
-    $donation_c="select *from tbl_request where request_id='$request_id'";
-    $donation_r=mysqli_query($con,$donation_c);
-    $donation_d=mysqli_fetch_array($donation_r);
-    $donation_id=$donation_d['reciever_id'];
+    if ($donation_id != NULL) {
+        $stmt = executeQuery($con, "UPDATE tbl_request SET request_status='Confirmed', donation_date=CURDATE() WHERE request_id=?", "i", array($request_id));
+        if ($stmt) { $stmt->close(); }
 
-    if($donation_id != NULL)
-    {
-        $upq="update tbl_request set request_status='Confirmed', donation_date=CURDATE() where request_id='$request_id'";
-        $query=mysqli_query($con,$upq);
-    
-        $upq2="update tbl_donation set last_donation_date=CURDATE(), donation_status='Not Submitted' where donation_id='$donation_id'";
-        $query2=mysqli_query($con,$upq2);
-    
-    
-        if($query2==True)
-        {
-            $_SESSION['flash_message']="Donated Successfully";
-            header('location:user_history.php');
-        }
+        $stmt2 = executeQuery($con, "UPDATE tbl_donation SET last_donation_date=CURDATE(), donation_status='Not Submitted' WHERE donation_id=?", "i", array($donation_id));
+        if ($stmt2) { $stmt2->close(); }
+
+        $_SESSION['flash_message'] = "Donated Successfully";
+        header('location:user_history.php');
+        exit;
     }
-
 }
 
 ?>
@@ -36,9 +27,9 @@ if(isset($_GET['accept']))
         <h1>DROPE OF HOPE</h1>
         <nav>
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="">User</a></li>
+                <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
                 <li class="breadcrumb-item">Home</li>
-                <li class="breadcrumb-item active">History</li>
+                <li class="breadcrumb-item active">Requests</li>
             </ol>
         </nav>
     </div><!-- End Page Title -->
@@ -47,7 +38,7 @@ if(isset($_GET['accept']))
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">History</h5>
+                        <h5 class="card-title">Incoming Requests</h5>
                         <!-- Table with stripped rows -->
                         <table class="table datatable">
                             <thead>
@@ -61,20 +52,19 @@ if(isset($_GET['accept']))
                             </thead>
                             <tbody>
                                 <?php
-                                $donors = "select *from tbl_request a 
-                                inner join tbl_donation b on a.reciever_id=b.donation_id 
-                                inner join tbl_user c on a.sender_id=c.user_id 
-                                where request_status='Added' and b.user_id='$sid'";
-                                $don_row = mysqli_query($con, $donors);
+                                $donors = getRows($con, "SELECT * FROM tbl_request a 
+                                INNER JOIN tbl_donation b ON a.reciever_id=b.donation_id 
+                                INNER JOIN tbl_user c ON a.sender_id=c.user_id 
+                                WHERE request_status='Added' AND b.user_id=?", "s", array($sid));
                                 $i = 0;
-                                while ($data = mysqli_fetch_array($don_row)) {
+                                foreach ($donors as $data) {
                                     $i++;
                                 ?>
                                     <tr>
                                         <th scope="row"><?php echo $i; ?></th>
-                                        <td><?php echo $data['user_name']; ?></td>
-                                        <td><?php echo $data['user_bgroup']; ?></td>
-                                        <td><?php echo $data['request_date']; ?></td>
+                                        <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['user_bgroup']); ?></td>
+                                        <td><?php echo htmlspecialchars($data['request_date']); ?></td>
                                         <td>
                                         <a href="user_requests.php?accept=<?php echo $data['request_id']; ?>" class="btn btn-sm btn-success">Accept</a>
                                         </td>

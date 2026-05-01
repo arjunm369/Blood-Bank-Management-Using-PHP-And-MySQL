@@ -1,50 +1,78 @@
 <?php
-$con = mysqli_connect("localhost", "root", "", "db_hemoconnect");
+// Start session and include required files
+session_start();
+ob_start();
+require_once('config/database.php');
+require_once('config/security.php');
 
+// Display flash messages
 if (isset($_SESSION['flash_message'])) {
-  echo '<script>alert("' . $_SESSION['flash_message'] . '")</script>';
+  echo '<script>alert("' . sanitizeInput($_SESSION['flash_message']) . '")</script>';
   unset($_SESSION['flash_message']);
 }
 
-?>
-
-
-
-<?php
+// Handle login
 if (isset($_POST["submit"])) {
-  $email = $_POST["email"];
-  $passwd = $_POST["password"];
-  $admin = "select * from tbl_admin where admin_email='$email' and admin_password='$passwd'";
-  $user = "select * from tbl_user where user_email='$email' and user_password='$passwd'";
-  $hospital = "select * from tbl_hospital where hospital_email='$email' and hospital_password='$passwd'";
-
-  $row1 = mysqli_query($con, $admin);
-  $row2 = mysqli_query($con, $user);
-  $row3 = mysqli_query($con, $hospital);
-
-  $data1 = mysqli_fetch_array($row1);
-  $data2 = mysqli_fetch_array($row2);
-  $data3 = mysqli_fetch_array($row3);
-
-  if ($data1) {
-    $sid = $data1['admin_id'];
-    session_start();
-    $_SESSION['id'] = $sid;
-    header("location:admin/admin_participants.php");
-  } elseif ($data2) {
-    $sid = $data2['user_id'];
-    session_start();
-    $_SESSION['id'] = $sid;
-    header("location:user/user_donate.php");
-  } elseif ($data3) {
-    $sid = $data3['hospital_id'];
-    session_start();
-    $_SESSION['id'] = $sid;
-    header("location:hospital/hospital_donors.php");
-  } else {
-    $_SESSION['flash_message'] = "invalid login details";
+  $email = sanitizeInput($_POST["email"] ?? '');
+  $password = $_POST["password"] ?? '';
+  
+  // Validate input
+  if (empty($email) || empty($password)) {
+    $_SESSION['flash_message'] = "Email and password are required";
     header('location:login.php');
+    exit;
   }
+  
+  if (!validateEmail($email)) {
+    $_SESSION['flash_message'] = "Invalid email format";
+    header('location:login.php');
+    exit;
+  }
+  
+  // Try Admin login
+  $admin_query = "SELECT admin_id, admin_password FROM tbl_admin WHERE admin_email = ?";
+  $admin_data = getRow($con, $admin_query, "s", array($email));
+  
+  if ($admin_data && verifyPassword($password, $admin_data['admin_password'])) {
+    $_SESSION['id'] = $admin_data['admin_id'];
+    $_SESSION['user_type'] = 'admin';
+    header("location:admin/admin_participants.php");
+    exit;
+  }
+  
+  // Try User login
+  $user_query = "SELECT user_id, user_password FROM tbl_user WHERE user_email = ?";
+  $user_data = getRow($con, $user_query, "s", array($email));
+  
+  // Debug logging
+  error_log("Login attempt for email: " . $email);
+  error_log("User data found: " . ($user_data ? "YES" : "NO"));
+  if ($user_data) {
+    error_log("Password verification result: " . (verifyPassword($password, $user_data['user_password']) ? "SUCCESS" : "FAILED"));
+  }
+  
+  if ($user_data && verifyPassword($password, $user_data['user_password'])) {
+    $_SESSION['id'] = $user_data['user_id'];
+    $_SESSION['user_type'] = 'user';
+    header("location:user/user_donate.php");
+    exit;
+  }
+  
+  // Try Hospital login
+  $hospital_query = "SELECT hospital_id, hospital_password FROM tbl_hospital WHERE hospital_email = ?";
+  $hospital_data = getRow($con, $hospital_query, "s", array($email));
+  
+  if ($hospital_data && verifyPassword($password, $hospital_data['hospital_password'])) {
+    $_SESSION['id'] = $hospital_data['hospital_id'];
+    $_SESSION['user_type'] = 'hospital';
+    header("location:hospital/hospital_donors.php");
+    exit;
+  }
+  
+  // Login failed
+  $_SESSION['flash_message'] = "Invalid email or password";
+  header('location:login.php');
+  exit;
 }
 ?>
 <!DOCTYPE html>
@@ -70,8 +98,6 @@ if (isset($_POST["submit"])) {
   <link href="asset_dashboard/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/remixicon/remixicon.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/simple-datatables/style.css" rel="stylesheet">
 
@@ -91,7 +117,7 @@ if (isset($_POST["submit"])) {
             <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
 
               <div class="d-flex justify-content-center py-4">
-                <a href="index.html" class="logo d-flex align-items-center w-auto">
+                <a href="index.php" class="logo d-flex align-items-center w-auto">
                   <img src="asset_dashboard/img/logo.png" alt="">
                   <span class="d-none d-lg-block">DROPE OF HOPE</span>
                 </a>
@@ -133,13 +159,7 @@ if (isset($_POST["submit"])) {
                 </div>
               </div>
 
-              <div class="credits">
-                <!-- All the links in the footer should remain intact. -->
-                <!-- You can delete the links only if you purchased the pro version. -->
-                <!-- Licensing information: https://bootstrapmade.com/license/ -->
-                <!-- Purchase the pro version with working PHP/AJAX contact form: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/ -->
-                Designed by <a href="">ABV</a>
-              </div>
+
 
             </div>
           </div>
@@ -153,14 +173,8 @@ if (isset($_POST["submit"])) {
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
   <!-- Vendor JS Files -->
-  <script src="asset_dashboard/vendor/apexcharts/apexcharts.min.js"></script>
   <script src="asset_dashboard/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="asset_dashboard/vendor/chart.js/chart.umd.js"></script>
-  <script src="asset_dashboard/vendor/echarts/echarts.min.js"></script>
-  <script src="asset_dashboard/vendor/quill/quill.min.js"></script>
   <script src="asset_dashboard/vendor/simple-datatables/simple-datatables.js"></script>
-  <script src="asset_dashboard/vendor/tinymce/tinymce.min.js"></script>
-  <script src="asset_dashboard/vendor/php-email-form/validate.js"></script>
 
   <!-- Template Main JS File -->
   <script src="asset_dashboard/js/main.js"></script>

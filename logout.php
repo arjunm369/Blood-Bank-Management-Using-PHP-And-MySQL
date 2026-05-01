@@ -1,12 +1,7 @@
 <?php
-
 session_start();
-$end=session_destroy();
-if($end==TRUE)
-{
-    echo '<script>alert("Logged Out Successfully")</script>';
-    header("location:login.php");
-}
-
-
+session_destroy();
+$_SESSION['flash_message'] = "Logged Out Successfully";
+header("location:login.php");
+exit;
 ?>

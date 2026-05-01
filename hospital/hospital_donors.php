@@ -8,7 +8,7 @@ include("hospital_header.php");
         <h1>HemoConnect</h1>
         <nav>
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="">Hospital</a></li>
+                <li class="breadcrumb-item"><a href="hospital_donors.php">Hospital</a></li>
                 <li class="breadcrumb-item">Home</li>
                 <li class="breadcrumb-item active">Donors</li>
             </ol>
@@ -32,19 +32,17 @@ include("hospital_header.php");
                             </thead>
                             <tbody>
                                 <?php
-                                $donors = "select *from tbl_donation a inner join tbl_user b on a.user_id=b.user_id where donation_status='Submitted'";
-                                $don_row = mysqli_query($con, $donors);
+                                $donors = getRows($con, "SELECT * FROM tbl_donation a INNER JOIN tbl_user b ON a.user_id=b.user_id WHERE donation_status='Submitted'");
                                 $i = 0;
 
-                                while ($don_data = mysqli_fetch_array($don_row)) {
+                                foreach ($donors as $don_data) {
                                     $i++;
                                 ?>
                                     <tr>
                                         <th scope="row"><?php echo $i;?></th>
-                                        <td><?php echo $don_data['user_name'];?></td>
-                                        <td><?php echo $don_data['user_bgroup'];?></td>
-                                        <td><?php echo $don_data['user_phone'];?></td>
-                                        </td>
+                                        <td><?php echo htmlspecialchars($don_data['user_name']);?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_bgroup']);?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_phone']);?></td>
                                     </tr>
                                 <?php
                                 }

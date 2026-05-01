@@ -1,25 +1,78 @@
 <?php
-$con = mysqli_connect("localhost", "root", "", "db_hemoconnect");
+session_start();
+ob_start();
+require_once('config/database.php');
+require_once('config/security.php');
 
-
+// Display flash messages
 if (isset($_SESSION['flash_message'])) {
-  echo '<script>alert("' . $_SESSION['flash_message'] . '")</script>';
+  echo '<script>alert("' . sanitizeInput($_SESSION['flash_message']) . '")</script>';
   unset($_SESSION['flash_message']);
 }
 
+// Handle registration
 if (isset($_POST['submit'])) {
-  $name = $_POST['name'];
-  $email = $_POST['email'];
-  $contact = $_POST['number'];
-  $address = $_POST['address'];
-  $password = $_POST['password'];
-
-  $insq = "INSERT INTO tbl_hospital(hospital_name, hospital_email, hospital_phone, hospital_address, hospital_password) VALUES ('$name','$email','$contact','$address','$password')";
-  $upload = mysqli_query($con, $insq);
-
-  if ($upload == true) {
-    $_SESSION['flash_message'] = "Registration Successful. Now You Can Login";
+  // Collect and sanitize inputs
+  $name = sanitizeInput($_POST['name'] ?? '');
+  $email = sanitizeInput($_POST['email'] ?? '');
+  $contact = sanitizeInput($_POST['number'] ?? '');
+  $address = sanitizeInput($_POST['address'] ?? '');
+  $password = $_POST['password'] ?? '';
+  
+  // Validate inputs
+  $errors = array();
+  
+  if (empty($name) || strlen($name) < 3) {
+    $errors[] = "Hospital name must be at least 3 characters";
+  }
+  
+  if (empty($email) || !validateEmail($email)) {
+    $errors[] = "Valid email is required";
+  }
+  
+  if (empty($contact) || !validatePhone($contact)) {
+    $errors[] = "Valid contact number required (10-12 digits)";
+  }
+  
+  if (empty($address) || strlen($address) < 5) {
+    $errors[] = "Address is required";
+  }
+  
+  if (empty($password) || !validatePasswordStrength($password)) {
+    $errors[] = "Password must be at least 6 characters";
+  }
+  
+  // If there are errors, show them
+  if (!empty($errors)) {
+    $_SESSION['flash_message'] = implode("\n", $errors);
+    header('location:register_hospital.php');
+    exit;
+  }
+  
+  // Check if email already exists
+  $check_email = "SELECT hospital_id FROM tbl_hospital WHERE hospital_email = ?";
+  $existing = getRow($con, $check_email, "s", array($email));
+  if ($existing) {
+    $_SESSION['flash_message'] = "Email already registered";
+    header('location:register_hospital.php');
+    exit;
+  }
+  
+  // Hash password
+  $hashed_password = hashPassword($password);
+  
+  // Insert hospital with prepared statement
+  if (insertRecord($con, "tbl_hospital", 
+      array("hospital_name", "hospital_email", "hospital_phone", "hospital_address", "hospital_password"),
+      "sssss",
+      array($name, $email, $contact, $address, $hashed_password))) {
+    $_SESSION['flash_message'] = "Registration Successful! Now you can login.";
     header("location:login.php");
+    exit;
+  } else {
+    $_SESSION['flash_message'] = "Registration failed. Please try again.";
+    header('location:register_hospital.php');
+    exit;
   }
 }
 
@@ -47,21 +100,13 @@ if (isset($_POST['submit'])) {
   <link href="asset_dashboard/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="asset_dashboard/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/remixicon/remixicon.css" rel="stylesheet">
   <link href="asset_dashboard/vendor/simple-datatables/style.css" rel="stylesheet">
 
   <!-- Template Main CSS File -->
   <link href="asset_dashboard/css/style.css" rel="stylesheet">
 
-  <!-- =======================================================
-  * Template Name: NiceAdmin
-  * Updated: Jul 27 2023 with Bootstrap v5.3.1
-  * Template URL: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/
-  * Author: BootstrapMade.com
-  * License: https://bootstrapmade.com/license/
-  ======================================================== -->
+
 </head>
 
 <body>
@@ -75,7 +120,7 @@ if (isset($_POST['submit'])) {
             <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
 
               <div class="d-flex justify-content-center py-4">
-                <a href="index.html" class="logo d-flex align-items-center w-auto">
+                <a href="index.php" class="logo d-flex align-items-center w-auto">
                   <img src="asset_dashboard/img/logo.png" alt="">
                   <span class="d-none d-lg-block">HemoConnect</span>
                 </a>
@@ -146,14 +191,8 @@ if (isset($_POST['submit'])) {
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
   <!-- Vendor JS Files -->
-  <script src="asset_dashboard/vendor/apexcharts/apexcharts.min.js"></script>
   <script src="asset_dashboard/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="asset_dashboard/vendor/chart.js/chart.umd.js"></script>
-  <script src="asset_dashboard/vendor/echarts/echarts.min.js"></script>
-  <script src="asset_dashboard/vendor/quill/quill.min.js"></script>
   <script src="asset_dashboard/vendor/simple-datatables/simple-datatables.js"></script>
-  <script src="asset_dashboard/vendor/tinymce/tinymce.min.js"></script>
-  <script src="asset_dashboard/vendor/php-email-form/validate.js"></script>
 
   <!-- Template Main JS File -->
   <script src="asset_dashboard/js/main.js"></script>

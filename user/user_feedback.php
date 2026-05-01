@@ -2,14 +2,13 @@
 include("user_header.php");
 
 if (isset($_POST['submit'])) {
-  $question = $_POST['question'];
+  $content = sanitizeInput($_POST['question']);
 
-  $insq = "insert into tbl_feedback(user_id,feedback_date,feedback_content) values('$sid',CURDATE(),'$question')";
-  mysqli_query($con, $insq);
+  $stmt = executeQuery($con, "INSERT INTO tbl_feedback(user_id, feedback_date, feedback_content) VALUES(?, CURDATE(), ?)", "ss", array($sid, $content));
+  if ($stmt) { $stmt->close(); }
   header('location:user_feedback.php');
+  exit;
 }
-
-
 
 ?>
 <main id="main" class="main">
@@ -18,7 +17,7 @@ if (isset($_POST['submit'])) {
     <h1>DROPE OF HOPE</h1>
     <nav>
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="">User</a></li>
+        <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
         <li class="breadcrumb-item">Feedback</li>
         <li class="breadcrumb-item active">Add & View</li>
       </ol>
@@ -30,7 +29,7 @@ if (isset($_POST['submit'])) {
       <div class="col-lg-12">
         <div class="card">
           <div class="card-body">
-            <h5 class="card-title">FaQs</h5>
+            <h5 class="card-title">Feedbacks</h5>
             <!-- Table with stripped rows -->
             <table class="table datatable">
               <thead>
@@ -38,24 +37,23 @@ if (isset($_POST['submit'])) {
                   <th scope="col">#</th>
                   <th scope="col">Name</th>
                   <th scope="col">Date</th>
-                  <th scope="col">Query</th>
+                  <th scope="col">Message</th>
                   <th scope="col">Reply</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
-                $selq = "select *from tbl_feedback a inner join tbl_user b on a.user_id=b.user_id ";
-                $row = mysqli_query($con, $selq);
+                $results = getRows($con, "SELECT a.*, b.user_name FROM tbl_feedback a INNER JOIN tbl_user b ON a.user_id=b.user_id");
                 $i = 0;
-                while ($data = mysqli_fetch_array($row)) {
+                foreach ($results as $data) {
                   $i++;
                 ?>
 
                   <tr>
                     <th scope="row"><?php echo $i; ?></th>
-                    <td><?php echo $data['user_name']; ?></td>
-                    <td><?php echo $data['feedback_date']; ?></td>
-                    <td><?php echo $data['feedback_content']; ?></td>
+                    <td><?php echo htmlspecialchars($data['user_name']); ?></td>
+                    <td><?php echo htmlspecialchars($data['feedback_date']); ?></td>
+                    <td><?php echo htmlspecialchars($data['feedback_content']); ?></td>
                     <td>
                       <?php
                       if ($data['feedback_reply'] == NULL) {
@@ -64,7 +62,7 @@ if (isset($_POST['submit'])) {
                       <?php
                       } else {
                       ?>
-                        <?php echo $data['feedback_reply']; ?>
+                        <?php echo htmlspecialchars($data['feedback_reply']); ?>
                       <?php
                       }
                       ?>
@@ -88,8 +86,8 @@ if (isset($_POST['submit'])) {
 
               <div class="col-md-12">
                 <div class="form-floating">
-                  <input type="name" class="form-control" name="question" id="name" placeholder="enter place name">
-                  <label for="floatingEmail">Enter Query</label>
+                  <input type="text" class="form-control" name="question" id="feedback" placeholder="enter your feedback" required>
+                  <label for="feedback">Enter Feedback</label>
                 </div>
               </div>
 

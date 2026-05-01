@@ -1,0 +1,16 @@
+node_modules/
+vendor/
+.env
+.DS_Store
+*.log
+!.gitkeep
+asset_dashboard/file_uploads/*
+!asset_dashboard/file_uploads/.gitkeep
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cache/
+*.sql.bak
+Thumbs.db

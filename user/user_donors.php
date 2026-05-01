@@ -1,18 +1,16 @@
 <?php
 include("user_header.php");
 
-$donation_id=$_GET['donation'];
-if($donation_id)
-{
-    $insq="insert into tbl_request(reciever_id,sender_id,request_date,request_status) values('$donation_id','$sid',CURDATE(),'Added')";
-    $query=mysqli_query($con,$insq);
-    if($query==True)
-    {
-        $_SESSION['flash_message']="Donation Request Added Successfully";
+$donation_id = isset($_GET['donation']) ? intval($_GET['donation']) : 0;
+if ($donation_id) {
+    $stmt = executeQuery($con, "INSERT INTO tbl_request(reciever_id, sender_id, request_date, request_status) VALUES(?, ?, CURDATE(), 'Added')", "ii", array($donation_id, $sid));
+    if ($stmt) {
+        $stmt->close();
+        $_SESSION['flash_message'] = "Donation Request Added Successfully";
         header("location:user_history.php");
+        exit;
     }
 }
-
 
 ?>
 <main id="main" class="main">
@@ -21,7 +19,7 @@ if($donation_id)
         <h1>DROPE OF HOPE</h1>
         <nav>
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="">User</a></li>
+                <li class="breadcrumb-item"><a href="user_donate.php">User</a></li>
                 <li class="breadcrumb-item">Home</li>
                 <li class="breadcrumb-item active">Donors</li>
             </ol>
@@ -47,19 +45,18 @@ if($donation_id)
                             </thead>
                             <tbody>
                                 <?php
-                                $donors = "select *from tbl_donation a inner join tbl_user b on a.user_id=b.user_id where a.user_id<>'$sid' and donation_status='Submitted'";
-                                $don_row = mysqli_query($con, $donors);
+                                $donors = getRows($con, "SELECT * FROM tbl_donation a INNER JOIN tbl_user b ON a.user_id=b.user_id WHERE a.user_id<>? AND donation_status='Submitted'", "s", array($sid));
                                 $i = 0;
 
-                                while ($don_data = mysqli_fetch_array($don_row)) {
+                                foreach ($donors as $don_data) {
                                     $i++;
                                 ?>
                                     <tr>
                                         <th scope="row"><?php echo $i;?></th>
-                                        <td><?php echo $don_data['user_name'];?></td>
-                                        <td><?php echo $don_data['user_bgroup'];?></td>
-                                        <td><?php echo $don_data['user_email'];?></td>
-                                        <td><?php echo $don_data['user_phone'];?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_name']);?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_bgroup']);?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_email']);?></td>
+                                        <td><?php echo htmlspecialchars($don_data['user_phone']);?></td>
                                         <td><a href="user_donors.php?donation=<?php echo $don_data['donation_id'];?>" class="btn btn-sm btn-info">Request</a>
                                         </td>
                                     </tr>
